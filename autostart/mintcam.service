@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/MintCam
-ExecStart=/home/pi/MintCam/autostart/start.sh
+WorkingDirectory=/home/pi/mintcam
+ExecStart=/home/pi/mintcam/autostart/start.sh
 Restart=always
 # Environment=FLASK_ENV=production   # if you use environments
 
