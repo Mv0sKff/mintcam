@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Initialize Picamera2
 picam2 = Picamera2()
 config = picam2.create_preview_configuration(
-    main={'format': 'XRGB8888', 'size': (640, 480)}
+    main={'format': 'RGB888', 'size': (640, 480)}
 )
 picam2.configure(config)
 picam2.start()
@@ -19,7 +19,7 @@ def gen_frames():
     while True:
         # Capture frame as numpy array
         frame = picam2.capture_array('main')
-        # Convert from RGBX to BGR for JPEG encoding
+        # Convert from RGB to BGR for JPEG encoding
         bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         # Encode as JPEG
         ret, jpeg = cv2.imencode('.jpg', bgr)
