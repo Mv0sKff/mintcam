@@ -1,0 +1,4 @@
+name: Aquarium
+systemd_service: false
+cron_update: false
+port: 5000

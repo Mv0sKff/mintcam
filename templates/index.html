@@ -1,9 +1,101 @@
 <html>
-<head>
-    <title>Raspberry Pi Camera Stream</title>
-</head>
-<body>
-    <h1>Raspberry Pi Camera Stream</h1>
-    <img src="{{ url_for('video_feed') }}" style="width: 100%; max-width: 640px;" />
-</body>
+    <head>
+        <title>mintcam</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            h1 {
+                color: #333;
+            }
+            .controls {
+                margin: 20px 0;
+                padding: 15px;
+                background-color: #f5f5f5;
+                border-radius: 5px;
+            }
+            select {
+                padding: 8px;
+                margin-right: 10px;
+                border-radius: 4px;
+                border: 1px solid #ccc;
+            }
+            button {
+                padding: 8px 15px;
+                background-color: #4caf50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+            .stream-container {
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>mintcam | {{ config.name }}</h1>
+
+        <div class="controls">
+            <form
+                id="camera-settings"
+                action="{{ url_for('set_resolution') }}"
+                method="post"
+            >
+                <label for="resolution">Resolution & FPS:</label>
+                <select id="resolution" name="resolution">
+                    <option value="2304x1296x56">2304 x 1296p56</option>
+                    <option value="2304x1296x30xHDR">2304 x 1296p30 HDR</option>
+                    <option value="1536x864x120">1536 x 864p120</option>
+                    <option value="640x480x30" selected>
+                        640 x 480p30 (Default)
+                    </option>
+                </select>
+                <button type="submit">Apply</button>
+            </form>
+        </div>
+
+        <div class="stream-container">
+            <img
+                src="{{ url_for('video_feed') }}"
+                style="width: 100%; border-radius: 5px"
+            />
+        </div>
+
+        <script>
+            document
+                .getElementById("camera-settings")
+                .addEventListener("submit", function (e) {
+                    e.preventDefault();
+                    const resolution =
+                        document.getElementById("resolution").value;
+
+                    fetch('{{ url_for("set_resolution") }}', {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                        body: "resolution=" + resolution,
+                    }).then((response) => {
+                        if (response.ok) {
+                            // Reload the video feed by forcing the img to refresh
+                            const img = document.querySelector(
+                                ".stream-container img",
+                            );
+                            const src = img.src;
+                            img.src = "";
+                            setTimeout(() => {
+                                img.src = src + "?" + new Date().getTime();
+                            }, 500);
+                        }
+                    });
+                });
+        </script>
+    </body>
 </html>
