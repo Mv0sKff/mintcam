@@ -37,6 +37,59 @@
             .stream-container {
                 margin-top: 20px;
             }
+            .picture-controls {
+                margin: 20px 0;
+                padding: 15px;
+                background-color: #f0f8ff;
+                border-radius: 5px;
+            }
+            .take-picture-btn {
+                background-color: #2196f3;
+                font-size: 16px;
+                padding: 10px 20px;
+            }
+            .take-picture-btn:hover {
+                background-color: #1976d2;
+            }
+            .status-message {
+                margin-top: 10px;
+                padding: 10px;
+                border-radius: 4px;
+                display: none;
+            }
+            .status-success {
+                background-color: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+            .status-error {
+                background-color: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+            .picture-gallery {
+                margin-top: 20px;
+                padding: 15px;
+                background-color: #f9f9f9;
+                border-radius: 5px;
+            }
+            .picture-item {
+                display: inline-block;
+                margin: 10px;
+                text-align: center;
+            }
+            .picture-thumbnail {
+                width: 150px;
+                height: 100px;
+                object-fit: cover;
+                border-radius: 4px;
+                border: 2px solid #ddd;
+            }
+            .picture-info {
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
+            }
         </style>
     </head>
     <body>
@@ -61,14 +114,33 @@
             </form>
         </div>
 
+        <div class="picture-controls">
+            <button
+                id="take-picture-btn"
+                class="take-picture-btn"
+                type="button"
+            >
+                Take Picture
+            </button>
+            <div id="status-message" class="status-message"></div>
+        </div>
+
         <div class="stream-container">
             <img
-                src="{{ url_for('video_feed') }}"
+                src="{{ url_for('live_video_feed') }}"
                 style="width: 100%; border-radius: 5px"
             />
         </div>
 
+        <div class="picture-gallery">
+            <h3>Recent Pictures</h3>
+            <div id="picture-list">
+                <p>Loading pictures...</p>
+            </div>
+        </div>
+
         <script>
+            // Camera settings form handler
             document
                 .getElementById("camera-settings")
                 .addEventListener("submit", function (e) {
@@ -96,6 +168,95 @@
                         }
                     });
                 });
+
+            // Take picture button handler
+            document
+                .getElementById("take-picture-btn")
+                .addEventListener("click", function () {
+                    const button = this;
+                    const statusDiv = document.getElementById("status-message");
+
+                    // Disable button and show loading
+                    button.disabled = true;
+                    button.textContent = "Taking Picture...";
+
+                    fetch("/take_picture", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                statusDiv.className =
+                                    "status-message status-success";
+                                statusDiv.textContent = `Picture saved: ${data.filename}`;
+                                statusDiv.style.display = "block";
+                                loadPictures(); // Refresh the gallery
+                            } else {
+                                statusDiv.className =
+                                    "status-message status-error";
+                                statusDiv.textContent = `Error: ${data.message}`;
+                                statusDiv.style.display = "block";
+                            }
+                        })
+                        .catch((error) => {
+                            statusDiv.className = "status-message status-error";
+                            statusDiv.textContent = `Error: ${error.message}`;
+                            statusDiv.style.display = "block";
+                        })
+                        .finally(() => {
+                            // Re-enable button
+                            button.disabled = false;
+                            button.textContent = "Take Picture";
+
+                            // Hide status message after 3 seconds
+                            setTimeout(() => {
+                                statusDiv.style.display = "none";
+                            }, 3000);
+                        });
+                });
+
+            // Load and display pictures
+            function loadPictures() {
+                fetch("/pictures")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const pictureList =
+                            document.getElementById("picture-list");
+
+                        if (data.success && data.pictures.length > 0) {
+                            pictureList.innerHTML = data.pictures
+                                .slice(0, 10) // Show only last 10 pictures
+                                .map(
+                                    (picture) => `
+                                    <div class="picture-item">
+                                        <img src="/pictures/${picture.filename}"
+                                             class="picture-thumbnail"
+                                             alt="${picture.filename}"
+                                             onclick="window.open('/pictures/${picture.filename}', '_blank')">
+                                        <div class="picture-info">
+                                            ${picture.filename}<br>
+                                            ${new Date(picture.created).toLocaleString()}
+                                        </div>
+                                    </div>
+                                `,
+                                )
+                                .join("");
+                        } else {
+                            pictureList.innerHTML =
+                                "<p>No pictures taken yet.</p>";
+                        }
+                    })
+                    .catch((error) => {
+                        document.getElementById("picture-list").innerHTML =
+                            "<p>Error loading pictures.</p>";
+                    });
+            }
+
+            // Load pictures when page loads
+            document.addEventListener("DOMContentLoaded", loadPictures);
         </script>
     </body>
 </html>
