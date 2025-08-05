@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import yaml
 import os
+import subprocess
 from datetime import datetime
 
 # Set DEBUG_MODE to True for testing without Picamera2
@@ -220,6 +221,128 @@ def serve_picture(filename):
         return jsonify({
             'success': False,
             'message': f'Error serving picture: {str(e)}'
+        }), 500
+
+@app.route('/create_recorder', methods=['POST'])
+def create_recorder():
+    try:
+        data = request.get_json()
+        hour = data.get('hour')
+        minute = data.get('minute')
+        name = data.get('name', 'recorder')
+
+        if hour is None or minute is None:
+            return jsonify({
+                'success': False,
+                'message': 'Hour and minute are required'
+            }), 400
+
+        # Call schedule.py script
+        result = subprocess.run([
+            'python3', 'schedule.py', str(hour), str(minute)
+        ], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': f'Recorder "{name}" scheduled successfully',
+                'hour': hour,
+                'minute': minute,
+                'cron_output': result.stdout
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to schedule recorder: {result.stderr}'
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error creating recorder: {str(e)}'
+        }), 500
+
+@app.route('/delete_recorder', methods=['POST'])
+def delete_recorder():
+    try:
+        data = request.get_json()
+        hour = data.get('hour')
+        minute = data.get('minute')
+
+        if hour is None or minute is None:
+            return jsonify({
+                'success': False,
+                'message': 'Hour and minute are required'
+            }), 400
+
+        # Create comment to match the one in schedule.py
+        comment = f'recorder h={hour} m={minute}'
+
+        # Call unschedule.py script
+        result = subprocess.run([
+            'python3', 'unschedule.py', comment
+        ], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': f'Recorder deleted successfully',
+                'unschedule_output': result.stdout
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to delete recorder: {result.stderr}'
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting recorder: {str(e)}'
+        }), 500
+
+@app.route('/list_recorders', methods=['GET'])
+def list_recorders():
+    try:
+        # Get current user's crontab
+        result = subprocess.run([
+            'crontab', '-l'
+        ], capture_output=True, text=True)
+
+        recorders = []
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            for line in lines:
+                if 'recorder h=' in line and 'callback.py' in line:
+                    # Parse the comment to extract hour and minute
+                    comment_start = line.find('#')
+                    if comment_start != -1:
+                        comment = line[comment_start + 1:].strip()
+                        # Extract h= and m= values
+                        import re
+                        h_match = re.search(r'h=(\d+)', comment)
+                        m_match = re.search(r'm=(\d+)', comment)
+                        if h_match and m_match:
+                            hour = int(h_match.group(1))
+                            minute = int(m_match.group(1))
+                            cron_parts = line.split('#')[0].strip().split()
+                            if len(cron_parts) >= 5:
+                                recorders.append({
+                                    'hour': hour,
+                                    'minute': minute,
+                                    'cron_expression': ' '.join(cron_parts[:5]),
+                                    'comment': comment
+                                })
+
+        return jsonify({
+            'success': True,
+            'recorders': recorders
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error listing recorders: {str(e)}'
         }), 500
 
 if __name__ == '__main__':

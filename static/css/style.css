@@ -86,3 +86,96 @@ button:hover {
     color: #666;
     margin-top: 5px;
 }
+
+.recorder-controls {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #fff3cd;
+    border-radius: 5px;
+    border: 1px solid #ffeaa7;
+}
+
+.recorder-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.recorder-form input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 80px;
+}
+
+.recorder-form label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.add-recorder-btn {
+    background-color: #ff9800;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-recorder-btn:hover {
+    background-color: #f57c00;
+}
+
+.recorder-list {
+    margin-top: 15px;
+}
+
+.recorder-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.recorder-info {
+    flex-grow: 1;
+}
+
+.recorder-schedule {
+    font-weight: bold;
+    color: #333;
+}
+
+.recorder-cron {
+    font-size: 12px;
+    color: #666;
+    font-family: monospace;
+    visibility: hidden;
+}
+
+.delete-recorder-btn {
+    background-color: #f44336;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delete-recorder-btn:hover {
+    background-color: #d32f2f;
+}
+
+.recorder-status {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    display: none;
+}

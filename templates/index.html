@@ -1,7 +1,10 @@
 <html>
     <head>
         <title>mintcam</title>
-        <link rel="stylesheet" href="styles.css" />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='css/style.css') }}"
+        />
     </head>
     <body>
         <h1>mintcam | {{ config.name }}</h1>
@@ -34,6 +37,46 @@
                 Take Picture
             </button>
             <div id="status-message" class="status-message"></div>
+        </div>
+
+        <div class="recorder-controls">
+            <h3>Schedule Recorders</h3>
+            <div class="recorder-form">
+                <label for="recorder-hour">Hour Interval:</label>
+                <input
+                    type="number"
+                    id="recorder-hour"
+                    min="0"
+                    max="23"
+                    placeholder="0"
+                />
+
+                <label for="recorder-minute">Minute:</label>
+                <input
+                    type="number"
+                    id="recorder-minute"
+                    min="0"
+                    max="59"
+                    placeholder="30"
+                    required
+                />
+
+                <button
+                    type="button"
+                    class="add-recorder-btn"
+                    id="add-recorder-btn"
+                >
+                    Add Recorder
+                </button>
+            </div>
+            <div id="recorder-status" class="recorder-status"></div>
+
+            <div class="recorder-list">
+                <h4>Active Recorders</h4>
+                <div id="recorder-list">
+                    <p>Loading recorders...</p>
+                </div>
+            </div>
         </div>
 
         <div class="stream-container">
@@ -168,6 +211,163 @@
 
             // Load pictures when page loads
             document.addEventListener("DOMContentLoaded", loadPictures);
+
+            // Recorder functionality
+            document
+                .getElementById("add-recorder-btn")
+                .addEventListener("click", function () {
+                    const button = this;
+                    const statusDiv =
+                        document.getElementById("recorder-status");
+                    const hourInput = document.getElementById("recorder-hour");
+                    const minuteInput =
+                        document.getElementById("recorder-minute");
+
+                    const hour = parseInt(hourInput.value) || 0;
+                    const minute = parseInt(minuteInput.value);
+
+                    if (isNaN(minute) || minute < 0 || minute > 59) {
+                        showRecorderStatus(
+                            "Error: Minute must be between 0 and 59",
+                            "error",
+                        );
+                        return;
+                    }
+
+                    if (hour < 0 || hour > 23) {
+                        showRecorderStatus(
+                            "Error: Hour interval must be between 0 and 23",
+                            "error",
+                        );
+                        return;
+                    }
+
+                    button.disabled = true;
+                    button.textContent = "Adding...";
+
+                    fetch("/create_recorder", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            hour: hour,
+                            minute: minute,
+                            name: `Recorder ${hour}h ${minute}m`,
+                        }),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                showRecorderStatus(data.message, "success");
+                                hourInput.value = "";
+                                minuteInput.value = "";
+                                loadRecorders();
+                            } else {
+                                showRecorderStatus(
+                                    `Error: ${data.message}`,
+                                    "error",
+                                );
+                            }
+                        })
+                        .catch((error) => {
+                            showRecorderStatus(
+                                `Error: ${error.message}`,
+                                "error",
+                            );
+                        })
+                        .finally(() => {
+                            button.disabled = false;
+                            button.textContent = "Add Recorder";
+                        });
+                });
+
+            function showRecorderStatus(message, type) {
+                const statusDiv = document.getElementById("recorder-status");
+                statusDiv.className = `recorder-status status-${type}`;
+                statusDiv.textContent = message;
+                statusDiv.style.display = "block";
+
+                setTimeout(() => {
+                    statusDiv.style.display = "none";
+                }, 5000);
+            }
+
+            function loadRecorders() {
+                fetch("/list_recorders")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const recorderList =
+                            document.getElementById("recorder-list");
+
+                        if (data.success && data.recorders.length > 0) {
+                            recorderList.innerHTML = data.recorders
+                                .map(
+                                    (recorder) => `
+                            <div class="recorder-item">
+                                <div class="recorder-info">
+                                    <div class="recorder-schedule">
+                                        Every ${recorder.hour === 0 ? "" : recorder.hour + " hours, "}${recorder.minute} minutes
+                                    </div>
+                                    <div class="recorder-cron">${recorder.cron_expression}</div>
+                                </div>
+                                <button class="delete-recorder-btn"
+                                        onclick="deleteRecorder(${recorder.hour}, ${recorder.minute})">
+                                    Delete
+                                </button>
+                            </div>
+                        `,
+                                )
+                                .join("");
+                        } else {
+                            recorderList.innerHTML =
+                                "<p>No active recorders.</p>";
+                        }
+                    })
+                    .catch((error) => {
+                        document.getElementById("recorder-list").innerHTML =
+                            "<p>Error loading recorders.</p>";
+                    });
+            }
+
+            function deleteRecorder(hour, minute) {
+                if (
+                    !confirm(
+                        `Delete recorder for every ${hour === 0 ? "" : hour + " hours, "}${minute} minutes?`,
+                    )
+                ) {
+                    return;
+                }
+
+                fetch("/delete_recorder", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        hour: hour,
+                        minute: minute,
+                    }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            showRecorderStatus(data.message, "success");
+                            loadRecorders();
+                        } else {
+                            showRecorderStatus(
+                                `Error: ${data.message}`,
+                                "error",
+                            );
+                        }
+                    })
+                    .catch((error) => {
+                        showRecorderStatus(`Error: ${error.message}`, "error");
+                    });
+            }
+
+            // Load recorders when page loads
+            document.addEventListener("DOMContentLoaded", loadRecorders);
         </script>
     </body>
 </html>

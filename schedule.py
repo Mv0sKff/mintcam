@@ -2,7 +2,7 @@ from crontab import CronTab
 import os
 import sys
 
-if not(len(sys.argv) >= 3 and sys.argv[1].isalnum() and sys.argv[1].isalnum()):
+if not(len(sys.argv) >= 3 and sys.argv[1].isdigit() and sys.argv[2].isdigit()):
     print("crie")
     exit(1)
 
