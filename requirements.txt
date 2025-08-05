@@ -2,3 +2,5 @@ Flask
 picamera2
 opencv-python
 PyYAML
+schedule
+requests

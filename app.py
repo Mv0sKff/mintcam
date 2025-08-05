@@ -8,7 +8,7 @@ from datetime import datetime
 # Set DEBUG_MODE to True for testing without Picamera2
 DEBUG_MODE = True
 # Generate more useful demo images for demo
-DEBUG_DEMO_MODE = False
+DEMO_LIVE_VIDEO = False
 
 if not DEBUG_MODE:
     from picamera2 import Picamera2
@@ -59,7 +59,7 @@ def gen_frames():
             # Create a synthetic frame with current resolution
             width, height = camera_settings['width'], camera_settings['height']
             frame = np.zeros((height, width, 3), dtype=np.uint8)
-            if DEBUG_DEMO_MODE:
+            if DEMO_LIVE_VIDEO:
                 settings_text = f"{width}x{height} {camera_settings['fps']}fps"
                 if camera_settings['hdr']:
                     settings_text += " HDR"
