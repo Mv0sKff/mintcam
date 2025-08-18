@@ -12,6 +12,10 @@ cd mintcam
 python3 -m venv .venv --system-site-packages
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# after update of apt package or something idk
+# pip install --upgrade --force-reinstall picamera2
+# pip install --upgrade --force-reinstall simplejpeg
 ```
 
 ## Run

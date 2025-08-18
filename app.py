@@ -6,14 +6,6 @@ import os
 import subprocess
 from datetime import datetime
 
-# Set DEBUG_MODE to True for testing without Picamera2
-DEBUG_MODE = True
-# Generate more useful demo images for demo
-DEMO_LIVE_VIDEO = False
-
-if not DEBUG_MODE:
-    from picamera2 import Picamera2
-
 # Load configuration
 def load_config():
     try:
@@ -23,6 +15,14 @@ def load_config():
         return {'name': 'mintcam'}  # Default fallback
 
 config = load_config()
+
+# Set DEBUG_MODE to True for testing without Picamera2
+DEBUG_MODE = bool(config.get("debug_mode", True))
+# Generate more useful demo images for demo
+DEMO_LIVE_VIDEO = False
+
+if not DEBUG_MODE:
+    from picamera2 import Picamera2
 
 # Initialize Flask app
 app = Flask(__name__)
