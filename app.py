@@ -37,10 +37,10 @@ camera_settings = {
 
 # Resolution presets
 resolution_presets = {
-    '2304x1296x56': {'width': 2304, 'height': 1296, 'fps': 56, 'hdr': False},
-    '2304x1296x30xHDR': {'width': 2304, 'height': 1296, 'fps': 30, 'hdr': True},
-    '1536x864x120': {'width': 1536, 'height': 864, 'fps': 120, 'hdr': False},
-    '640x480x30': {'width': 640, 'height': 480, 'fps': 30, 'hdr': False}
+    '640x480x30': {'width': 640, 'height': 480, 'fps': 30, 'hdr': False},
+    '1536x864x30': {'width': 1536, 'height': 864, 'fps': 30, 'hdr': False},
+    '2304x1296x30': {'width': 2304, 'height': 1296, 'fps': 30, 'hdr': False},
+    '4608x2592x30': {'width': 4608, 'height': 2592, 'fps': 30, 'hdr': False},
 }
 
 if not DEBUG_MODE:
