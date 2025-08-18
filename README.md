@@ -1,9 +1,9 @@
 # MintCam
 
-## Install
+## Install (on raspberry pi)
 
 ```
-sudo apt install python3-picamera
+sudo apt install python3-picamera2 cron
 ```
 
 ```
