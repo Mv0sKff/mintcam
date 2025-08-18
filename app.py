@@ -110,10 +110,10 @@ def set_resolution():
                 main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
             )
             # Configure HDR if needed
-            if camera_settings['hdr']:
-                picam2.set_controls({"HighDynamicRangeMode": 1})
-            else:
-                picam2.set_controls({"HighDynamicRangeMode": 0})
+            #if camera_settings['hdr']:
+            #    picam2.set_controls({"HighDynamicRangeMode": 1})
+            #else:
+            #    picam2.set_controls({"HighDynamicRangeMode": 0})
 
             # Set framerate
             picam2.set_controls({"FrameRate": camera_settings['fps']})
