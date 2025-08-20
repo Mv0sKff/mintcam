@@ -38,8 +38,8 @@ flask run
 ## Usage
 
 ### Manual Recording
-- **Take Picture**: Click "Take Picture" button for instant photo capture
-- **Record Video**: Click "Record Video" button and specify duration (1-30 seconds)
+- **Take Picture**: Click "Take Picture" button for instant photo capture (Ctrl/Cmd + P)
+- **Record Video**: Click "Record Video" button and specify duration (1-30 seconds) (Ctrl/Cmd + V)
 
 ### Scheduled Recording
 1. Set hour interval (0-23) and minute (0-59)
@@ -47,10 +47,29 @@ flask run
 3. For videos, set duration (1-30 seconds)
 4. Click "Add Recorder" to schedule
 
+### File Management
+- **Individual Download**: Each picture and video has its own download button
+- **Individual Delete**: Each picture and video has its own delete button with confirmation
+- **Bulk Download**: "Download All Pictures" and "Download All Videos" buttons create ZIP archives (Ctrl/Cmd + D / Ctrl/Cmd + Shift + D)
+- **Bulk Delete**: "Delete All Pictures" and "Delete All Videos" buttons with confirmation
+- **View Files**: Click on thumbnails to view full-size images or play videos
+
+### Keyboard Shortcuts
+- **Ctrl/Cmd + P**: Take Picture
+- **Ctrl/Cmd + V**: Record Video
+- **Ctrl/Cmd + D**: Download All Pictures
+- **Ctrl/Cmd + Shift + D**: Download All Videos
+
 ### Examples
 - Every 30 minutes: Hour=0, Minute=30
 - Every 2 hours at 15 minutes past: Hour=2, Minute=15
 - Every hour on the hour: Hour=1, Minute=0
+
+### Download Features
+- **Individual Downloads**: Direct download of any picture or video file
+- **Bulk Downloads**: ZIP archives with timestamp naming (e.g., `mintcam_pictures_20240101_120000.zip`)
+- **Smart Error Handling**: Checks for available files before attempting downloads
+- **Progress Feedback**: Status messages show download progress and file counts
 
 ## Configuration
 

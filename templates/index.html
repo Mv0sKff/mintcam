@@ -126,8 +126,42 @@
             />
         </div>
 
+        <div class="help-section">
+            <h3>Help & Shortcuts</h3>
+            <div class="help-content">
+                <div class="keyboard-shortcuts">
+                    <h4>Keyboard Shortcuts:</h4>
+                    <ul>
+                        <li><kbd>Ctrl/Cmd + P</kbd> - Take Picture</li>
+                        <li><kbd>Ctrl/Cmd + V</kbd> - Record Video</li>
+                        <li><kbd>Ctrl/Cmd + D</kbd> - Download All Pictures</li>
+                        <li>
+                            <kbd>Ctrl/Cmd + Shift + D</kbd> - Download All
+                            Videos
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
         <div class="picture-gallery">
             <h3>Recent Pictures</h3>
+            <button
+                id="download-all-pictures-btn"
+                class="download-all-btn"
+                type="button"
+                onclick="downloadAllPictures()"
+            >
+                Download All Pictures
+            </button>
+            <button
+                id="delete-all-pictures-btn"
+                class="delete-all-btn"
+                type="button"
+                onclick="deleteAllPictures()"
+            >
+                Delete All Pictures
+            </button>
             <div id="picture-list">
                 <p>Loading pictures...</p>
             </div>
@@ -135,6 +169,22 @@
 
         <div class="video-gallery">
             <h3>Recent Videos</h3>
+            <button
+                id="download-all-videos-btn"
+                class="download-all-btn"
+                type="button"
+                onclick="downloadAllVideos()"
+            >
+                Download All Videos
+            </button>
+            <button
+                id="delete-all-videos-btn"
+                class="delete-all-btn"
+                type="button"
+                onclick="deleteAllVideos()"
+            >
+                Delete All Videos
+            </button>
             <div id="video-list">
                 <p>Loading videos...</p>
             </div>
@@ -239,7 +289,13 @@
                                              onclick="window.open('/pictures/${picture.filename}', '_blank')">
                                         <div class="picture-info">
                                             ${picture.filename}<br>
-                                            ${new Date(picture.created).toLocaleString()}
+                                            ${new Date(picture.created).toLocaleString()}<br>
+                                            <button class="download-btn" onclick="downloadPicture('${picture.filename}')">
+                                                Download
+                                            </button>
+                                            <button class="delete-btn" onclick="deletePicture('${picture.filename}')">
+                                                Delete
+                                            </button>
                                         </div>
                                     </div>
                                 `,
@@ -333,7 +389,13 @@
                                         </video>
                                         <div class="video-info">
                                             ${video.filename}<br>
-                                            ${new Date(video.created).toLocaleString()}
+                                            ${new Date(video.created).toLocaleString()}<br>
+                                            <button class="download-btn" onclick="downloadVideo('${video.filename}')">
+                                                Download
+                                            </button>
+                                            <button class="delete-btn" onclick="deleteVideo('${video.filename}')">
+                                                Delete
+                                            </button>
                                         </div>
                                     </div>
                                 `,
@@ -551,6 +613,293 @@
 
             // Load recorders when page loads
             document.addEventListener("DOMContentLoaded", loadRecorders);
+
+            // Delete picture function
+            function deletePicture(filename) {
+                if (
+                    !confirm(`Are you sure you want to delete "${filename}"?`)
+                ) {
+                    return;
+                }
+
+                showDeleteStatus("Deleting picture...", "info");
+
+                fetch(`/delete_picture/${filename}`, {
+                    method: "DELETE",
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            showDeleteStatus(data.message, "success");
+                            loadPictures(); // Refresh the gallery
+                        } else {
+                            showDeleteStatus(`Error: ${data.message}`, "error");
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus(`Error: ${error.message}`, "error");
+                    });
+            }
+
+            // Delete video function
+            function deleteVideo(filename) {
+                if (
+                    !confirm(`Are you sure you want to delete "${filename}"?`)
+                ) {
+                    return;
+                }
+
+                showDeleteStatus("Deleting video...", "info");
+
+                fetch(`/delete_video/${filename}`, {
+                    method: "DELETE",
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            showDeleteStatus(data.message, "success");
+                            loadVideos(); // Refresh the gallery
+                        } else {
+                            showDeleteStatus(`Error: ${data.message}`, "error");
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus(`Error: ${error.message}`, "error");
+                    });
+            }
+
+            // Show delete status message
+            function showDeleteStatus(message, type) {
+                const statusDiv = document.getElementById("status-message");
+                statusDiv.className = `status-message status-${type}`;
+                statusDiv.textContent = message;
+                statusDiv.style.display = "block";
+
+                setTimeout(() => {
+                    statusDiv.style.display = "none";
+                }, 3000);
+            }
+
+            // Delete all pictures function
+            function deleteAllPictures() {
+                if (
+                    !confirm(
+                        "Are you sure you want to delete ALL pictures? This action cannot be undone!",
+                    )
+                ) {
+                    return;
+                }
+
+                const button = document.getElementById(
+                    "delete-all-pictures-btn",
+                );
+                button.disabled = true;
+                button.textContent = "Deleting...";
+                showDeleteStatus("Deleting all pictures...", "info");
+
+                fetch("/delete_all_pictures", {
+                    method: "DELETE",
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            showDeleteStatus(data.message, "success");
+                            loadPictures(); // Refresh the gallery
+                        } else {
+                            showDeleteStatus(`Error: ${data.message}`, "error");
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus(`Error: ${error.message}`, "error");
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.textContent = "Delete All Pictures";
+                    });
+            }
+
+            // Delete all videos function
+            function deleteAllVideos() {
+                if (
+                    !confirm(
+                        "Are you sure you want to delete ALL videos? This action cannot be undone!",
+                    )
+                ) {
+                    return;
+                }
+
+                const button = document.getElementById("delete-all-videos-btn");
+                button.disabled = true;
+                button.textContent = "Deleting...";
+                showDeleteStatus("Deleting all videos...", "info");
+
+                fetch("/delete_all_videos", {
+                    method: "DELETE",
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            showDeleteStatus(data.message, "success");
+                            loadVideos(); // Refresh the gallery
+                        } else {
+                            showDeleteStatus(`Error: ${data.message}`, "error");
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus(`Error: ${error.message}`, "error");
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.textContent = "Delete All Videos";
+                    });
+            }
+
+            // Download individual picture
+            function downloadPicture(filename) {
+                const link = document.createElement("a");
+                link.href = `/pictures/${filename}?download=true`;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showDeleteStatus(`Downloading ${filename}...`, "success");
+            }
+
+            // Download individual video
+            function downloadVideo(filename) {
+                const link = document.createElement("a");
+                link.href = `/videos/${filename}?download=true`;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showDeleteStatus(`Downloading ${filename}...`, "success");
+            }
+
+            // Download all pictures
+            function downloadAllPictures() {
+                const button = document.getElementById(
+                    "download-all-pictures-btn",
+                );
+                button.disabled = true;
+                button.textContent = "Preparing...";
+                showDeleteStatus("Preparing pictures download...", "info");
+
+                // Check if there are any pictures first
+                fetch("/pictures")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success && data.pictures.length > 0) {
+                            const link = document.createElement("a");
+                            link.href = "/download_all_pictures";
+                            link.download = "";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showDeleteStatus(
+                                `Downloading ${data.pictures.length} pictures as ZIP...`,
+                                "success",
+                            );
+                        } else {
+                            showDeleteStatus(
+                                "No pictures available to download",
+                                "error",
+                            );
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus("Error checking pictures", "error");
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.textContent = "Download All Pictures";
+                    });
+            }
+
+            // Download all videos
+            function downloadAllVideos() {
+                const button = document.getElementById(
+                    "download-all-videos-btn",
+                );
+                button.disabled = true;
+                button.textContent = "Preparing...";
+                showDeleteStatus("Preparing videos download...", "info");
+
+                // Check if there are any videos first
+                fetch("/videos")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success && data.videos.length > 0) {
+                            const link = document.createElement("a");
+                            link.href = "/download_all_videos";
+                            link.download = "";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showDeleteStatus(
+                                `Downloading ${data.videos.length} videos as ZIP...`,
+                                "success",
+                            );
+                        } else {
+                            showDeleteStatus(
+                                "No videos available to download",
+                                "error",
+                            );
+                        }
+                    })
+                    .catch((error) => {
+                        showDeleteStatus("Error checking videos", "error");
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.textContent = "Download All Videos";
+                    });
+            }
+
+            // Keyboard shortcuts
+            document.addEventListener("keydown", function (e) {
+                // Only trigger shortcuts if not in an input field
+                if (
+                    e.target.tagName === "INPUT" ||
+                    e.target.tagName === "SELECT" ||
+                    e.target.tagName === "TEXTAREA"
+                ) {
+                    return;
+                }
+
+                // Ctrl/Cmd + P: Take Picture
+                if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+                    e.preventDefault();
+                    document.getElementById("take-picture-btn").click();
+                }
+
+                // Ctrl/Cmd + V: Record Video
+                if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+                    e.preventDefault();
+                    document.getElementById("record-video-btn").click();
+                }
+
+                // Ctrl/Cmd + D: Download All Pictures
+                if ((e.ctrlKey || e.metaKey) && e.key === "d" && !e.shiftKey) {
+                    e.preventDefault();
+                    downloadAllPictures();
+                }
+
+                // Ctrl/Cmd + Shift + D: Download All Videos
+                if ((e.ctrlKey || e.metaKey) && e.key === "D") {
+                    e.preventDefault();
+                    downloadAllVideos();
+                }
+            });
+
+            // Show keyboard shortcuts on page load
+            document.addEventListener("DOMContentLoaded", function () {
+                console.log("MintCam Keyboard Shortcuts:");
+                console.log("Ctrl/Cmd + P: Take Picture");
+                console.log("Ctrl/Cmd + V: Record Video");
+                console.log("Ctrl/Cmd + D: Download All Pictures");
+                console.log("Ctrl/Cmd + Shift + D: Download All Videos");
+            });
         </script>
     </body>
 </html>

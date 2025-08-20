@@ -7,6 +7,8 @@ import subprocess
 from datetime import datetime
 import threading
 import time
+import zipfile
+import io
 
 # Load configuration
 def load_config():
@@ -224,12 +226,98 @@ def serve_picture(filename):
                 'message': 'Picture not found'
             }), 404
 
-        return send_file(filepath, mimetype='image/jpeg')
+        # Check if download parameter is present
+        download = request.args.get('download', 'false').lower() == 'true'
+
+        if download:
+            return send_file(filepath, mimetype='image/jpeg', as_attachment=True, download_name=filename)
+        else:
+            return send_file(filepath, mimetype='image/jpeg')
 
     except Exception as e:
         return jsonify({
             'success': False,
             'message': f'Error serving picture: {str(e)}'
+        }), 500
+
+@app.route('/delete_picture/<filename>', methods=['DELETE'])
+def delete_picture(filename):
+    try:
+        # Security: Prevent path traversal attacks
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid filename'
+            }), 400
+
+        pictures_dir = 'pictures'
+        filepath = os.path.join(pictures_dir, filename)
+
+        # Security: Ensure file is actually in the pictures directory
+        if not os.path.commonpath([os.path.abspath(pictures_dir), os.path.abspath(filepath)]) == os.path.abspath(pictures_dir):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid file path'
+            }), 400
+
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'message': 'Picture not found'
+            }), 404
+
+        # Verify it's an image file
+        if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid file type'
+            }), 400
+
+        # Delete the file
+        os.remove(filepath)
+
+        return jsonify({
+            'success': True,
+            'message': f'Picture {filename} deleted successfully'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting picture: {str(e)}'
+        }), 500
+
+@app.route('/delete_all_pictures', methods=['DELETE'])
+def delete_all_pictures():
+    try:
+        pictures_dir = 'pictures'
+        if not os.path.exists(pictures_dir):
+            return jsonify({
+                'success': True,
+                'message': 'No pictures directory found',
+                'deleted_count': 0
+            })
+
+        deleted_count = 0
+        for filename in os.listdir(pictures_dir):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                filepath = os.path.join(pictures_dir, filename)
+                try:
+                    os.remove(filepath)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Error deleting {filename}: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {deleted_count} pictures',
+            'deleted_count': deleted_count
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting pictures: {str(e)}'
         }), 500
 
 @app.route('/record_video', methods=['POST'])
@@ -384,12 +472,192 @@ def serve_video(filename):
                 'message': 'Video not found'
             }), 404
 
-        return send_file(filepath, mimetype='video/mp4')
+        # Check if download parameter is present
+        download = request.args.get('download', 'false').lower() == 'true'
+
+        if download:
+            return send_file(filepath, mimetype='video/mp4', as_attachment=True, download_name=filename)
+        else:
+            return send_file(filepath, mimetype='video/mp4')
 
     except Exception as e:
         return jsonify({
             'success': False,
             'message': f'Error serving video: {str(e)}'
+        }), 500
+
+@app.route('/delete_video/<filename>', methods=['DELETE'])
+def delete_video(filename):
+    try:
+        # Security: Prevent path traversal attacks
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid filename'
+            }), 400
+
+        videos_dir = 'videos'
+        filepath = os.path.join(videos_dir, filename)
+
+        # Security: Ensure file is actually in the videos directory
+        if not os.path.commonpath([os.path.abspath(videos_dir), os.path.abspath(filepath)]) == os.path.abspath(videos_dir):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid file path'
+            }), 400
+
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'message': 'Video not found'
+            }), 404
+
+        # Verify it's a video file
+        if not filename.lower().endswith(('.mp4', '.avi', '.mov')):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid file type'
+            }), 400
+
+        # Delete the file
+        os.remove(filepath)
+
+        return jsonify({
+            'success': True,
+            'message': f'Video {filename} deleted successfully'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting video: {str(e)}'
+        }), 500
+
+@app.route('/delete_all_videos', methods=['DELETE'])
+def delete_all_videos():
+    try:
+        videos_dir = 'videos'
+        if not os.path.exists(videos_dir):
+            return jsonify({
+                'success': True,
+                'message': 'No videos directory found',
+                'deleted_count': 0
+            })
+
+        deleted_count = 0
+        for filename in os.listdir(videos_dir):
+            if filename.lower().endswith(('.mp4', '.avi', '.mov')):
+                filepath = os.path.join(videos_dir, filename)
+                try:
+                    os.remove(filepath)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Error deleting {filename}: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {deleted_count} videos',
+            'deleted_count': deleted_count
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting videos: {str(e)}'
+        }), 500
+
+@app.route('/download_all_pictures')
+def download_all_pictures():
+    try:
+        pictures_dir = 'pictures'
+        if not os.path.exists(pictures_dir):
+            return jsonify({
+                'success': False,
+                'message': 'No pictures directory found'
+            }), 404
+
+        # Create a zip file in memory
+        memory_file = io.BytesIO()
+
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            file_count = 0
+            for filename in os.listdir(pictures_dir):
+                if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    filepath = os.path.join(pictures_dir, filename)
+                    if os.path.exists(filepath):
+                        zf.write(filepath, filename)
+                        file_count += 1
+
+            if file_count == 0:
+                return jsonify({
+                    'success': False,
+                    'message': 'No pictures found to download'
+                }), 404
+
+        memory_file.seek(0)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'mintcam_pictures_{timestamp}.zip'
+
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error creating pictures archive: {str(e)}'
+        }), 500
+
+@app.route('/download_all_videos')
+def download_all_videos():
+    try:
+        videos_dir = 'videos'
+        if not os.path.exists(videos_dir):
+            return jsonify({
+                'success': False,
+                'message': 'No videos directory found'
+            }), 404
+
+        # Create a zip file in memory
+        memory_file = io.BytesIO()
+
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            file_count = 0
+            for filename in os.listdir(videos_dir):
+                if filename.lower().endswith(('.mp4', '.avi', '.mov')):
+                    filepath = os.path.join(videos_dir, filename)
+                    if os.path.exists(filepath):
+                        zf.write(filepath, filename)
+                        file_count += 1
+
+            if file_count == 0:
+                return jsonify({
+                    'success': False,
+                    'message': 'No videos found to download'
+                }), 404
+
+        memory_file.seek(0)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f'mintcam_videos_{timestamp}.zip'
+
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error creating videos archive: {str(e)}'
         }), 500
 
 @app.route('/create_recorder', methods=['POST'])
