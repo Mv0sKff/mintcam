@@ -89,8 +89,8 @@ def gen_frames():
         else:
             # Capture frame from camera
             frame = picam2.capture_array('main')
-            # Use PIL for JPEG encoding to preserve RGB color format
-            img = Image.fromarray(frame, 'RGB')
+            # Use PIL for JPEG encoding to preserve BGR color format
+            img = Image.fromarray(frame, 'BGR')
             img_buffer = io.BytesIO()
             img.save(img_buffer, format='JPEG', quality=85)
             frame_bytes = img_buffer.getvalue()
@@ -163,8 +163,8 @@ def take_picture():
         else:
             # Capture a high-quality still image from camera
             frame = picam2.capture_array('main')
-            # Use PIL to save image directly from RGB format
-            img = Image.fromarray(frame, 'RGB')
+            # Use PIL to save image directly from BGR format
+            img = Image.fromarray(frame, 'BGR')
             img.save(filepath, format='JPEG', quality=95)
             success = True
 
