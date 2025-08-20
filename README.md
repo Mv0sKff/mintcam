@@ -89,10 +89,11 @@ flask run
 
 ### Color Issues
 - **Wrong colors in live preview/pictures**: Fixed by using native RGB format throughout
-- **Videos have correct colors but pictures don't**: Now using Picamera2's direct `capture_file()` method
+- **Videos have correct colors but pictures don't**: Now using optimized still configuration switching
 - **Color format consistency**: Live stream, pictures, and videos all use same RGB pipeline
-- **Optimal performance**: Pictures use dedicated `still` stream for highest quality RGB capture
+- **Optimal performance**: Pictures temporarily switch to `create_still_configuration()` for maximum quality
 - **No color conversions**: Direct RGB handling eliminates BGR conversion artifacts
+- **Configuration switching**: Automatic video ↔ still configuration switching for optimal results
 
 ### Debug Mode
 - Set `debug_mode: true` in `config.yml` to test without real camera

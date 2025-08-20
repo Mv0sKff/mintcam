@@ -60,8 +60,7 @@ if not DEBUG_MODE:
     # Initialize Picamera2
     picam2 = Picamera2()
     config = picam2.create_video_configuration(
-        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-        still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
     )
     picam2.configure(config)
     picam2.start()
@@ -121,8 +120,7 @@ def set_resolution():
             # Reconfigure the camera with new settings
             picam2.stop()
             config = picam2.create_video_configuration(
-                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-                still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
             )
             # Configure HDR if needed
             #if camera_settings['hdr']:
@@ -163,8 +161,27 @@ def take_picture():
             img.save(filepath, format='JPEG', quality=95)
             success = True
         else:
-            # Use Picamera2's direct image capture for optimal RGB handling
-            picam2.capture_file(filepath, name='still')
+            # Temporarily switch to still configuration for highest quality RGB capture
+            picam2.stop()
+
+            # Configure for still image capture
+            still_config = picam2.create_still_configuration(
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+            )
+            picam2.configure(still_config)
+            picam2.start()
+
+            # Capture high-quality still image
+            picam2.capture_file(filepath)
+
+            # Switch back to video configuration for live stream
+            picam2.stop()
+            config = picam2.create_video_configuration(
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+            )
+            picam2.configure(config)
+            picam2.start()
+
             success = True
 
         if success:
@@ -468,8 +485,7 @@ def record_video():
 
                 # Configure for video recording
                 video_config = picam2.create_video_configuration(
-                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-                    still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                 )
                 picam2.configure(video_config)
 
@@ -519,8 +535,7 @@ def record_video():
 
                 # Restart the video stream for live feed
                 stream_config = picam2.create_video_configuration(
-                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-                    still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                 )
                 picam2.configure(stream_config)
                 picam2.start()
@@ -547,8 +562,7 @@ def record_video():
                 # Ensure we restart the stream even if recording fails
                 try:
                     stream_config = picam2.create_video_configuration(
-                        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-                        still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                     )
                     picam2.configure(stream_config)
                     picam2.start()
