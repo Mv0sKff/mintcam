@@ -3,7 +3,7 @@ import os
 import sys
 
 if not(len(sys.argv) >= 3 and sys.argv[1].isdigit() and sys.argv[2].isdigit()):
-    print("crie")
+    print("Usage: python3 schedule.py <hour> <minute> [record_type] [duration]")
     exit(1)
 
 # TODO fix hour = 0
@@ -41,6 +41,8 @@ def convert_to_cron(hour: int = None, minute: int = None) -> str:
 
 hour = sys.argv[1]
 minute = sys.argv[2]
+record_type = sys.argv[3] if len(sys.argv) > 3 else 'picture'
+duration = sys.argv[4] if len(sys.argv) > 4 else None
 
 cron_expression = convert_to_cron(int(hour), int(minute))
 print("Cron expression:", cron_expression)
@@ -50,7 +52,19 @@ cron = CronTab(user=True)
 current_file = os.path.abspath(__file__)
 current_dir = os.path.dirname(current_file)
 
-job = cron.new(command=f'python3 {current_dir}/callback.py', comment=f'recorder h={hour} m={minute}')
+# Build comment with record type and duration
+comment_parts = [f'recorder h={hour} m={minute} type={record_type}']
+if duration and record_type == 'video':
+    comment_parts.append(f'duration={duration}')
+comment = ' '.join(comment_parts)
+
+# Build command with parameters
+cmd_parts = [f'python3 {current_dir}/callback.py', record_type]
+if duration and record_type == 'video':
+    cmd_parts.append(duration)
+command = ' '.join(cmd_parts)
+
+job = cron.new(command=command, comment=comment)
 
 job.setall(cron_expression)
 

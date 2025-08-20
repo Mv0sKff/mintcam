@@ -5,6 +5,8 @@ import yaml
 import os
 import subprocess
 from datetime import datetime
+import threading
+import time
 
 # Load configuration
 def load_config():
@@ -33,6 +35,13 @@ camera_settings = {
     'height': 480,
     'fps': 30,
     'hdr': False
+}
+
+# Video recording state
+video_recording = {
+    'is_recording': False,
+    'output_path': None,
+    'recorder': None
 }
 
 # Resolution presets
@@ -223,12 +232,174 @@ def serve_picture(filename):
             'message': f'Error serving picture: {str(e)}'
         }), 500
 
+@app.route('/record_video', methods=['POST'])
+def record_video():
+    global video_recording
+
+    try:
+        data = request.get_json() or {}
+        duration = min(int(data.get('duration', 30)), 30)  # Max 30 seconds
+
+        if video_recording['is_recording']:
+            return jsonify({
+                'success': False,
+                'message': 'Video recording already in progress'
+            }), 400
+
+        # Create videos directory if it doesn't exist
+        videos_dir = 'videos'
+        if not os.path.exists(videos_dir):
+            os.makedirs(videos_dir)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'video_{timestamp}.mp4'
+        filepath = os.path.join(videos_dir, filename)
+
+        if DEBUG_MODE:
+            # Create a synthetic video for debug mode
+            width, height = camera_settings['width'], camera_settings['height']
+
+            # Use ffmpeg to create a test video
+            import subprocess
+            ffmpeg_cmd = [
+                'ffmpeg', '-f', 'lavfi', '-i',
+                f'testsrc=duration={duration}:size={width}x{height}:rate={camera_settings["fps"]}',
+                '-pix_fmt', 'yuv420p', '-y', filepath
+            ]
+
+            video_recording['is_recording'] = True
+            video_recording['output_path'] = filepath
+
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+
+            video_recording['is_recording'] = False
+            video_recording['output_path'] = None
+
+            if result.returncode == 0:
+                return jsonify({
+                    'success': True,
+                    'message': f'Video recorded successfully ({duration}s)',
+                    'filename': filename,
+                    'filepath': filepath,
+                    'duration': duration
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': f'Failed to create test video: {result.stderr}'
+                }), 500
+        else:
+            # Record video using picamera2
+            video_recording['is_recording'] = True
+            video_recording['output_path'] = filepath
+
+            # Stop the current video stream temporarily
+            picam2.stop()
+
+            # Configure for video recording
+            video_config = picam2.create_video_configuration(
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+                controls={'FrameRate': camera_settings['fps']}
+            )
+            picam2.configure(video_config)
+
+            # Start recording
+            encoder = picam2.start_recording(filepath, format='mp4')
+
+            # Record for the specified duration
+            time.sleep(duration)
+
+            # Stop recording
+            picam2.stop_recording()
+
+            # Restart the video stream
+            stream_config = picam2.create_video_configuration(
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+            )
+            picam2.configure(stream_config)
+            picam2.start()
+
+            video_recording['is_recording'] = False
+            video_recording['output_path'] = None
+
+            return jsonify({
+                'success': True,
+                'message': f'Video recorded successfully ({duration}s)',
+                'filename': filename,
+                'filepath': filepath,
+                'duration': duration
+            })
+
+    except Exception as e:
+        video_recording['is_recording'] = False
+        video_recording['output_path'] = None
+        return jsonify({
+            'success': False,
+            'message': f'Error recording video: {str(e)}'
+        }), 500
+
+@app.route('/videos', methods=['GET'])
+def list_videos():
+    try:
+        videos_dir = 'videos'
+        if not os.path.exists(videos_dir):
+            return jsonify({'success': True, 'videos': []})
+
+        videos = []
+        for filename in os.listdir(videos_dir):
+            if filename.lower().endswith(('.mp4', '.avi', '.mov')):
+                filepath = os.path.join(videos_dir, filename)
+                stat = os.stat(filepath)
+                videos.append({
+                    'filename': filename,
+                    'size': stat.st_size,
+                    'created': datetime.fromtimestamp(stat.st_ctime).isoformat()
+                })
+
+        # Sort by creation time, newest first
+        videos.sort(key=lambda x: x['created'], reverse=True)
+
+        return jsonify({
+            'success': True,
+            'videos': videos,
+            'count': len(videos)
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error listing videos: {str(e)}'
+        }), 500
+
+@app.route('/videos/<filename>')
+def serve_video(filename):
+    try:
+        videos_dir = 'videos'
+        filepath = os.path.join(videos_dir, filename)
+
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'message': 'Video not found'
+            }), 404
+
+        return send_file(filepath, mimetype='video/mp4')
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error serving video: {str(e)}'
+        }), 500
+
 @app.route('/create_recorder', methods=['POST'])
 def create_recorder():
     try:
         data = request.get_json()
         hour = data.get('hour')
         minute = data.get('minute')
+        record_type = data.get('record_type', 'picture')  # 'picture' or 'video'
+        duration = data.get('duration', 30) if record_type == 'video' else None
         name = data.get('name', 'recorder')
 
         if hour is None or minute is None:
@@ -237,10 +408,12 @@ def create_recorder():
                 'message': 'Hour and minute are required'
             }), 400
 
-        # Call schedule.py script
-        result = subprocess.run([
-            'python3', 'schedule.py', str(hour), str(minute)
-        ], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+        # Call schedule.py script with record type and duration
+        cmd_args = ['python3', 'schedule.py', str(hour), str(minute), record_type]
+        if record_type == 'video' and duration:
+            cmd_args.append(str(min(int(duration), 30)))  # Max 30 seconds
+
+        result = subprocess.run(cmd_args, capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
 
         if result.returncode == 0:
             return jsonify({
@@ -275,12 +448,31 @@ def delete_recorder():
                 'message': 'Hour and minute are required'
             }), 400
 
-        # Create comment to match the one in schedule.py
-        comment = f'recorder h={hour} m={minute}'
+        # Find and delete the recorder with matching hour and minute
+        # We need to get the full comment first since it may include type and duration
+        cron_result = subprocess.run([
+            'crontab', '-l'
+        ], capture_output=True, text=True)
 
-        # Call unschedule.py script
+        matching_comment = None
+        if cron_result.returncode == 0:
+            lines = cron_result.stdout.strip().split('\n')
+            for line in lines:
+                if f'recorder h={hour} m={minute}' in line and 'callback.py' in line:
+                    comment_start = line.find('#')
+                    if comment_start != -1:
+                        matching_comment = line[comment_start + 1:].strip()
+                        break
+
+        if not matching_comment:
+            return jsonify({
+                'success': False,
+                'message': 'Recorder not found'
+            }), 404
+
+        # Call unschedule.py script with the full matching comment
         result = subprocess.run([
-            'python3', 'unschedule.py', comment
+            'python3', 'unschedule.py', matching_comment
         ], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
 
         if result.returncode == 0:
@@ -314,25 +506,35 @@ def list_recorders():
             lines = result.stdout.strip().split('\n')
             for line in lines:
                 if 'recorder h=' in line and 'callback.py' in line:
-                    # Parse the comment to extract hour and minute
+                    # Parse the comment to extract hour, minute, and recording details
                     comment_start = line.find('#')
                     if comment_start != -1:
                         comment = line[comment_start + 1:].strip()
-                        # Extract h= and m= values
+                        # Extract h=, m=, type=, and duration= values
                         import re
                         h_match = re.search(r'h=(\d+)', comment)
                         m_match = re.search(r'm=(\d+)', comment)
+                        type_match = re.search(r'type=(\w+)', comment)
+                        duration_match = re.search(r'duration=(\d+)', comment)
+
                         if h_match and m_match:
                             hour = int(h_match.group(1))
                             minute = int(m_match.group(1))
+                            record_type = type_match.group(1) if type_match else 'picture'
+                            duration = int(duration_match.group(1)) if duration_match else None
+
                             cron_parts = line.split('#')[0].strip().split()
                             if len(cron_parts) >= 5:
-                                recorders.append({
+                                recorder_data = {
                                     'hour': hour,
                                     'minute': minute,
+                                    'record_type': record_type,
                                     'cron_expression': ' '.join(cron_parts[:5]),
                                     'comment': comment
-                                })
+                                }
+                                if duration:
+                                    recorder_data['duration'] = duration
+                                recorders.append(recorder_data)
 
         return jsonify({
             'success': True,

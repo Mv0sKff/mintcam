@@ -5,3 +5,5 @@ PyYAML
 schedule
 requests
 python-crontab
+# Note: ffmpeg is required for video recording in debug mode
+# Install with: sudo apt-get install ffmpeg (Ubuntu/Debian) or brew install ffmpeg (macOS)

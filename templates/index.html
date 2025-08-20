@@ -36,6 +36,25 @@
             >
                 Take Picture
             </button>
+            <button
+                id="record-video-btn"
+                class="record-video-btn"
+                type="button"
+            >
+                Record Video
+            </button>
+            <input
+                type="number"
+                id="manual-video-duration"
+                min="1"
+                max="30"
+                value="10"
+                placeholder="10"
+                style="width: 60px; margin-left: 10px"
+            />
+            <label for="manual-video-duration" style="margin-left: 5px"
+                >seconds</label
+            >
             <div id="status-message" class="status-message"></div>
         </div>
 
@@ -59,6 +78,27 @@
                     max="59"
                     placeholder="30"
                     required
+                />
+
+                <label for="record-type">Type:</label>
+                <select id="record-type">
+                    <option value="picture">Picture</option>
+                    <option value="video">Video</option>
+                </select>
+
+                <label
+                    for="video-duration"
+                    id="duration-label"
+                    style="display: none"
+                    >Duration (s):</label
+                >
+                <input
+                    type="number"
+                    id="video-duration"
+                    min="1"
+                    max="30"
+                    placeholder="30"
+                    style="display: none"
                 />
 
                 <button
@@ -90,6 +130,13 @@
             <h3>Recent Pictures</h3>
             <div id="picture-list">
                 <p>Loading pictures...</p>
+            </div>
+        </div>
+
+        <div class="video-gallery">
+            <h3>Recent Videos</h3>
+            <div id="video-list">
+                <p>Loading videos...</p>
             </div>
         </div>
 
@@ -209,8 +256,121 @@
                     });
             }
 
+            // Record video button handler
+            document
+                .getElementById("record-video-btn")
+                .addEventListener("click", function () {
+                    const button = this;
+                    const statusDiv = document.getElementById("status-message");
+                    const durationInput = document.getElementById(
+                        "manual-video-duration",
+                    );
+                    const duration = parseInt(durationInput.value) || 10;
+
+                    // Disable button and show loading
+                    button.disabled = true;
+                    button.textContent = "Recording...";
+
+                    fetch("/record_video", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ duration: duration }),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                statusDiv.className =
+                                    "status-message status-success";
+                                statusDiv.textContent = `Video saved: ${data.filename}`;
+                                statusDiv.style.display = "block";
+                                loadVideos(); // Refresh the gallery
+                            } else {
+                                statusDiv.className =
+                                    "status-message status-error";
+                                statusDiv.textContent = `Error: ${data.message}`;
+                                statusDiv.style.display = "block";
+                            }
+                        })
+                        .catch((error) => {
+                            statusDiv.className = "status-message status-error";
+                            statusDiv.textContent = `Error: ${error.message}`;
+                            statusDiv.style.display = "block";
+                        })
+                        .finally(() => {
+                            // Re-enable button
+                            button.disabled = false;
+                            button.textContent = "Record Video";
+
+                            // Hide status message after 3 seconds
+                            setTimeout(() => {
+                                statusDiv.style.display = "none";
+                            }, 3000);
+                        });
+                });
+
             // Load pictures when page loads
             document.addEventListener("DOMContentLoaded", loadPictures);
+
+            // Load and display videos
+            function loadVideos() {
+                fetch("/videos")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const videoList = document.getElementById("video-list");
+
+                        if (data.success && data.videos.length > 0) {
+                            videoList.innerHTML = data.videos
+                                .slice(0, 10) // Show only last 10 videos
+                                .map(
+                                    (video) => `
+                                    <div class="video-item">
+                                        <video src="/videos/${video.filename}"
+                                               class="video-thumbnail"
+                                               controls
+                                               onclick="window.open('/videos/${video.filename}', '_blank')">
+                                        </video>
+                                        <div class="video-info">
+                                            ${video.filename}<br>
+                                            ${new Date(video.created).toLocaleString()}
+                                        </div>
+                                    </div>
+                                `,
+                                )
+                                .join("");
+                        } else {
+                            videoList.innerHTML =
+                                "<p>No videos recorded yet.</p>";
+                        }
+                    })
+                    .catch((error) => {
+                        document.getElementById("video-list").innerHTML =
+                            "<p>Error loading videos.</p>";
+                    });
+            }
+
+            // Load videos when page loads
+            document.addEventListener("DOMContentLoaded", loadVideos);
+
+            // Show/hide duration field based on record type
+            document
+                .getElementById("record-type")
+                .addEventListener("change", function () {
+                    const recordType = this.value;
+                    const durationLabel =
+                        document.getElementById("duration-label");
+                    const durationInput =
+                        document.getElementById("video-duration");
+
+                    if (recordType === "video") {
+                        durationLabel.style.display = "inline";
+                        durationInput.style.display = "inline";
+                    } else {
+                        durationLabel.style.display = "none";
+                        durationInput.style.display = "none";
+                    }
+                });
 
             // Recorder functionality
             document
@@ -222,9 +382,18 @@
                     const hourInput = document.getElementById("recorder-hour");
                     const minuteInput =
                         document.getElementById("recorder-minute");
+                    const recordTypeSelect =
+                        document.getElementById("record-type");
+                    const durationInput =
+                        document.getElementById("video-duration");
 
                     const hour = parseInt(hourInput.value) || 0;
                     const minute = parseInt(minuteInput.value);
+                    const recordType = recordTypeSelect.value;
+                    const duration =
+                        recordType === "video"
+                            ? parseInt(durationInput.value) || 30
+                            : null;
 
                     if (isNaN(minute) || minute < 0 || minute > 59) {
                         showRecorderStatus(
@@ -245,16 +414,23 @@
                     button.disabled = true;
                     button.textContent = "Adding...";
 
+                    const requestBody = {
+                        hour: hour,
+                        minute: minute,
+                        record_type: recordType,
+                        name: `Recorder ${hour}h ${minute}m (${recordType})`,
+                    };
+
+                    if (recordType === "video") {
+                        requestBody.duration = duration;
+                    }
+
                     fetch("/create_recorder", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
                         },
-                        body: JSON.stringify({
-                            hour: hour,
-                            minute: minute,
-                            name: `Recorder ${hour}h ${minute}m`,
-                        }),
+                        body: JSON.stringify(requestBody),
                     })
                         .then((response) => response.json())
                         .then((data) => {
@@ -262,6 +438,12 @@
                                 showRecorderStatus(data.message, "success");
                                 hourInput.value = "";
                                 minuteInput.value = "";
+                                recordTypeSelect.value = "picture";
+                                durationInput.value = "";
+                                durationInput.style.display = "none";
+                                document.getElementById(
+                                    "duration-label",
+                                ).style.display = "none";
                                 loadRecorders();
                             } else {
                                 showRecorderStatus(
@@ -308,6 +490,7 @@
                                 <div class="recorder-info">
                                     <div class="recorder-schedule">
                                         Every ${recorder.hour === 0 ? "" : recorder.hour + " hours, "}${recorder.minute} minutes
+                                        ${recorder.record_type === "video" ? `(Video ${recorder.duration || 30}s)` : "(Picture)"}
                                     </div>
                                     <div class="recorder-cron">${recorder.cron_expression}</div>
                                 </div>
