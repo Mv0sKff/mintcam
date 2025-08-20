@@ -22,6 +22,7 @@ sudo apt install python3-picamera2 cron ffmpeg
 - **FFmpeg**: Required for video recording and conversion
 - **Picamera2**: Camera interface library  
 - **Cron**: For scheduled recording functionality
+- **Pillow (PIL)**: For proper RGB image processing and color accuracy
 - **Python 3**: With required packages from requirements.txt
 
 ```

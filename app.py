@@ -10,6 +10,7 @@ import time
 import zipfile
 import io
 import shutil
+from PIL import Image
 
 # Load configuration
 def load_config():
@@ -80,19 +81,19 @@ def gen_frames():
                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
                 cv2.putText(frame, settings_text, (width//10, height//2 + 40),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                bgr = frame  # Already in BGR format
-                bgr = np.zeros((height, width, 3), dtype=np.uint8)
-            bgr = frame
+            # Use PIL for JPEG encoding to preserve RGB color format
+            img = Image.fromarray(frame, 'RGB')
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format='JPEG', quality=85)
+            frame_bytes = img_buffer.getvalue()
         else:
             # Capture frame from camera
             frame = picam2.capture_array('main')
-            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        # Encode frame as JPEG
-        ret, jpeg = cv2.imencode('.jpg', bgr)
-        if not ret:
-            continue
-        frame_bytes = jpeg.tobytes()
+            # Use PIL for JPEG encoding to preserve RGB color format
+            img = Image.fromarray(frame, 'RGB')
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format='JPEG', quality=85)
+            frame_bytes = img_buffer.getvalue()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
@@ -151,17 +152,21 @@ def take_picture():
         if DEBUG_MODE:
             # Create a synthetic image for debug mode
             width, height = camera_settings['width'], camera_settings['height']
-            bgr = np.zeros((height, width, 3), dtype=np.uint8)
+            frame = np.zeros((height, width, 3), dtype=np.uint8)
             # Add some visual content to the debug image
-            cv2.putText(bgr, f'Debug Image {timestamp}', (50, height//2),
+            cv2.putText(frame, f'Debug Image {timestamp}', (50, height//2),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            # Use PIL to save image directly from RGB format
+            img = Image.fromarray(frame, 'RGB')
+            img.save(filepath, format='JPEG', quality=95)
+            success = True
         else:
             # Capture a high-quality still image from camera
             frame = picam2.capture_array('main')
-            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        # Save the image
-        success = cv2.imwrite(filepath, bgr)
+            # Use PIL to save image directly from RGB format
+            img = Image.fromarray(frame, 'RGB')
+            img.save(filepath, format='JPEG', quality=95)
+            success = True
 
         if success:
             return jsonify({
