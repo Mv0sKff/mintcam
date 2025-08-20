@@ -9,6 +9,7 @@ import threading
 import time
 import zipfile
 import io
+import shutil
 
 # Load configuration
 def load_config():
@@ -348,23 +349,179 @@ def record_video():
             # Create a synthetic video for debug mode
             width, height = camera_settings['width'], camera_settings['height']
 
-            # Use ffmpeg to create a test video
-            import subprocess
-            ffmpeg_cmd = [
-                'ffmpeg', '-f', 'lavfi', '-i',
-                f'testsrc=duration={duration}:size={width}x{height}:rate={camera_settings["fps"]}',
-                '-pix_fmt', 'yuv420p', '-y', filepath
-            ]
+            video_recording['is_recording'] = True
+            video_recording['output_path'] = filepath
+
+            try:
+                # Try OpenCV method first (more reliable)
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                out = cv2.VideoWriter(filepath, fourcc, camera_settings['fps'], (width, height))
+
+                total_frames = duration * camera_settings['fps']
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                for frame_num in range(total_frames):
+                    # Create a blue frame
+                    frame = np.full((height, width, 3), (255, 0, 0), dtype=np.uint8)
+
+                    # Add text overlay
+                    cv2.putText(frame, 'DEBUG MODE', (50, 50),
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                    cv2.putText(frame, f'Recording: {timestamp}', (50, 100),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                    cv2.putText(frame, f'Frame: {frame_num}/{total_frames}', (50, 150),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+                    out.write(frame)
+
+                out.release()
+
+                video_recording['is_recording'] = False
+                video_recording['output_path'] = None
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Debug video recorded successfully ({duration}s)',
+                    'filename': filename,
+                    'filepath': filepath,
+                    'duration': duration
+                })
+
+            except Exception as opencv_error:
+                # Fallback to FFmpeg if OpenCV fails
+                if shutil.which('ffmpeg'):
+                    try:
+                        # Simple solid color video without text
+                        ffmpeg_cmd = [
+                            'ffmpeg', '-f', 'lavfi', '-i',
+                            f'color=color=blue:size={width}x{height}:duration={duration}:rate={camera_settings["fps"]}',
+                            '-pix_fmt', 'yuv420p', '-y', filepath
+                        ]
+
+                        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+
+                        if result.returncode == 0:
+                            video_recording['is_recording'] = False
+                            video_recording['output_path'] = None
+
+                            return jsonify({
+                                'success': True,
+                                'message': f'Debug video created with FFmpeg ({duration}s)',
+                                'filename': filename,
+                                'filepath': filepath,
+                                'duration': duration
+                            })
+                        else:
+                            raise Exception(f'FFmpeg failed: {result.stderr}')
+
+                    except Exception as ffmpeg_error:
+                        video_recording['is_recording'] = False
+                        video_recording['output_path'] = None
+                        return jsonify({
+                            'success': False,
+                            'message': f'Debug video creation failed. OpenCV error: {opencv_error}. FFmpeg error: {ffmpeg_error}'
+                        }), 500
+                else:
+                    video_recording['is_recording'] = False
+                    video_recording['output_path'] = None
+                    # Final fallback - create a simple text file as placeholder
+                    try:
+                        fallback_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        with open(filepath.replace('.mp4', '.txt'), 'w') as f:
+                            f.write(f"Debug video recording simulated\n")
+                            f.write(f"Duration: {duration} seconds\n")
+                            f.write(f"Resolution: {width}x{height}\n")
+                            f.write(f"FPS: {camera_settings['fps']}\n")
+                            f.write(f"Timestamp: {fallback_timestamp}\n")
+                            f.write(f"Note: OpenCV and FFmpeg both unavailable\n")
+
+                        return jsonify({
+                            'success': True,
+                            'message': f'Debug recording simulated (saved as text file)',
+                            'filename': filename.replace('.mp4', '.txt'),
+                            'filepath': filepath.replace('.mp4', '.txt'),
+                            'duration': duration
+                        })
+                    except Exception as file_error:
+                        return jsonify({
+                            'success': False,
+                            'message': f'All debug methods failed. OpenCV: {opencv_error}. File write: {file_error}'
+                        }), 500
+        else:
+            # Record video using picamera2
+            from picamera2.encoders import H264Encoder
+            from picamera2.outputs import FileOutput
 
             video_recording['is_recording'] = True
             video_recording['output_path'] = filepath
 
-            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+            # Create temporary H264 file
+            h264_filepath = filepath.replace('.mp4', '.h264')
 
-            video_recording['is_recording'] = False
-            video_recording['output_path'] = None
+            try:
+                # Stop the current video stream temporarily
+                picam2.stop()
 
-            if result.returncode == 0:
+                # Configure for video recording
+                video_config = picam2.create_video_configuration(
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                )
+                picam2.configure(video_config)
+
+                # Create encoder and output for H264 format
+                encoder = H264Encoder()
+                output = FileOutput(h264_filepath)
+
+                # Start recording
+                picam2.start_recording(encoder, output)
+
+                # Record for the specified duration
+                time.sleep(duration)
+
+                # Stop recording
+                picam2.stop_recording()
+
+                # Convert H264 to MP4 using ffmpeg
+                convert_success = False
+
+                # Check if ffmpeg is available
+                if shutil.which('ffmpeg'):
+                    try:
+                        ffmpeg_cmd = [
+                            'ffmpeg', '-i', h264_filepath, '-c', 'copy',
+                            '-f', 'mp4', '-y', filepath
+                        ]
+                        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+                        if result.returncode == 0:
+                            convert_success = True
+                            # Remove the temporary H264 file
+                            os.remove(h264_filepath)
+                        else:
+                            print(f"FFmpeg conversion failed: {result.stderr}")
+                    except Exception as ffmpeg_error:
+                        print(f"FFmpeg failed: {ffmpeg_error}")
+                else:
+                    print("FFmpeg not found in PATH")
+
+                # If conversion failed, keep the H264 file as MP4 (will play in most browsers)
+                if not convert_success and os.path.exists(h264_filepath):
+                    os.rename(h264_filepath, filepath)
+                    print(f"Video saved as H264 format: {filepath}")
+
+                # Final check - ensure we have a video file
+                if not os.path.exists(filepath):
+                    raise Exception("Video file was not created successfully")
+
+                # Restart the video stream for live feed
+                stream_config = picam2.create_video_configuration(
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                )
+                picam2.configure(stream_config)
+                picam2.start()
+
+                video_recording['is_recording'] = False
+                video_recording['output_path'] = None
+
                 return jsonify({
                     'success': True,
                     'message': f'Video recorded successfully ({duration}s)',
@@ -372,52 +529,43 @@ def record_video():
                     'filepath': filepath,
                     'duration': duration
                 })
-            else:
+
+            except Exception as e:
+                # Clean up temporary file if it exists
+                if os.path.exists(h264_filepath):
+                    try:
+                        os.remove(h264_filepath)
+                    except:
+                        pass
+
+                # Ensure we restart the stream even if recording fails
+                try:
+                    stream_config = picam2.create_video_configuration(
+                        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                    )
+                    picam2.configure(stream_config)
+                    picam2.start()
+                except Exception as stream_error:
+                    print(f"Failed to restart video stream: {stream_error}")
+
+                video_recording['is_recording'] = False
+                video_recording['output_path'] = None
+
+                # Provide more detailed error message
+                error_msg = f"Video recording failed: {str(e)}"
+                if "H264Encoder" in str(e):
+                    error_msg += ". Try installing: sudo apt install python3-picamera2"
+                elif "FileOutput" in str(e):
+                    error_msg += ". Check file permissions and disk space."
+                elif "ffmpeg" in str(e).lower():
+                    error_msg += ". Install ffmpeg: sudo apt install ffmpeg"
+                elif "Camera already started" in str(e):
+                    error_msg += ". Camera is busy. Try again in a moment."
+
                 return jsonify({
                     'success': False,
-                    'message': f'Failed to create test video: {result.stderr}'
+                    'message': error_msg
                 }), 500
-        else:
-            # Record video using picamera2
-            video_recording['is_recording'] = True
-            video_recording['output_path'] = filepath
-
-            # Stop the current video stream temporarily
-            picam2.stop()
-
-            # Configure for video recording
-            video_config = picam2.create_video_configuration(
-                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
-                controls={'FrameRate': camera_settings['fps']}
-            )
-            picam2.configure(video_config)
-
-            # Start recording
-            encoder = picam2.start_recording(filepath, format='mp4')
-
-            # Record for the specified duration
-            time.sleep(duration)
-
-            # Stop recording
-            picam2.stop_recording()
-
-            # Restart the video stream
-            stream_config = picam2.create_video_configuration(
-                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
-            )
-            picam2.configure(stream_config)
-            picam2.start()
-
-            video_recording['is_recording'] = False
-            video_recording['output_path'] = None
-
-            return jsonify({
-                'success': True,
-                'message': f'Video recorded successfully ({duration}s)',
-                'filename': filename,
-                'filepath': filepath,
-                'duration': duration
-            })
 
     except Exception as e:
         video_recording['is_recording'] = False
@@ -436,7 +584,7 @@ def list_videos():
 
         videos = []
         for filename in os.listdir(videos_dir):
-            if filename.lower().endswith(('.mp4', '.avi', '.mov')):
+            if filename.lower().endswith(('.mp4', '.avi', '.mov', '.h264', '.txt')):
                 filepath = os.path.join(videos_dir, filename)
                 stat = os.stat(filepath)
                 videos.append({
@@ -475,10 +623,22 @@ def serve_video(filename):
         # Check if download parameter is present
         download = request.args.get('download', 'false').lower() == 'true'
 
-        if download:
-            return send_file(filepath, mimetype='video/mp4', as_attachment=True, download_name=filename)
+        # Determine mimetype based on file extension
+        if filename.lower().endswith('.h264'):
+            mimetype = 'video/h264'
+        elif filename.lower().endswith('.avi'):
+            mimetype = 'video/x-msvideo'
+        elif filename.lower().endswith('.mov'):
+            mimetype = 'video/quicktime'
+        elif filename.lower().endswith('.txt'):
+            mimetype = 'text/plain'
         else:
-            return send_file(filepath, mimetype='video/mp4')
+            mimetype = 'video/mp4'
+
+        if download:
+            return send_file(filepath, mimetype=mimetype, as_attachment=True, download_name=filename)
+        else:
+            return send_file(filepath, mimetype=mimetype)
 
     except Exception as e:
         return jsonify({
@@ -512,8 +672,8 @@ def delete_video(filename):
                 'message': 'Video not found'
             }), 404
 
-        # Verify it's a video file
-        if not filename.lower().endswith(('.mp4', '.avi', '.mov')):
+        # Verify it's a video file or debug file
+        if not filename.lower().endswith(('.mp4', '.avi', '.mov', '.h264', '.txt')):
             return jsonify({
                 'success': False,
                 'message': 'Invalid file type'
@@ -546,7 +706,7 @@ def delete_all_videos():
 
         deleted_count = 0
         for filename in os.listdir(videos_dir):
-            if filename.lower().endswith(('.mp4', '.avi', '.mov')):
+            if filename.lower().endswith(('.mp4', '.avi', '.mov', '.h264', '.txt')):
                 filepath = os.path.join(videos_dir, filename)
                 try:
                     os.remove(filepath)

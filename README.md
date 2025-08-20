@@ -18,6 +18,12 @@ A web-based camera interface for Raspberry Pi with live video streaming, picture
 sudo apt install python3-picamera2 cron ffmpeg
 ```
 
+### Requirements
+- **FFmpeg**: Required for video recording and conversion
+- **Picamera2**: Camera interface library  
+- **Cron**: For scheduled recording functionality
+- **Python 3**: With required packages from requirements.txt
+
 ```
 git clone https://github.com/Mv0sKff/mintcam.git
 cd mintcam
@@ -70,6 +76,24 @@ flask run
 - **Bulk Downloads**: ZIP archives with timestamp naming (e.g., `mintcam_pictures_20240101_120000.zip`)
 - **Smart Error Handling**: Checks for available files before attempting downloads
 - **Progress Feedback**: Status messages show download progress and file counts
+
+## Troubleshooting
+
+### Video Recording Issues
+- **"H264Encoder not found"**: Install picamera2 with `sudo apt install python3-picamera2`
+- **"FFmpeg not available"**: Install with `sudo apt install ffmpeg`
+- **"Camera already started"**: Wait a moment and try again, camera is busy
+- **Videos don't play**: H264 files may need conversion. Ensure FFmpeg is installed
+- **"Error parsing filterchain"**: FFmpeg text filter issue - will fallback to OpenCV or simple video
+
+### Debug Mode
+- Set `debug_mode: true` in `config.yml` to test without real camera
+- **Multiple fallback methods**:
+  1. **OpenCV**: Creates debug video with frame counter and timestamp overlay
+  2. **FFmpeg**: Simple solid color test video if OpenCV unavailable
+  3. **Text file**: Debug log if both OpenCV and FFmpeg fail
+- Debug videos show recording parameters and creation timestamp
+- Supports all video operations (record, download, delete) in debug mode
 
 ## Configuration
 

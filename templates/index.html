@@ -379,27 +379,57 @@
                         if (data.success && data.videos.length > 0) {
                             videoList.innerHTML = data.videos
                                 .slice(0, 10) // Show only last 10 videos
-                                .map(
-                                    (video) => `
-                                    <div class="video-item">
-                                        <video src="/videos/${video.filename}"
-                                               class="video-thumbnail"
-                                               controls
-                                               onclick="window.open('/videos/${video.filename}', '_blank')">
-                                        </video>
-                                        <div class="video-info">
-                                            ${video.filename}<br>
-                                            ${new Date(video.created).toLocaleString()}<br>
-                                            <button class="download-btn" onclick="downloadVideo('${video.filename}')">
-                                                Download
-                                            </button>
-                                            <button class="delete-btn" onclick="deleteVideo('${video.filename}')">
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                `,
-                                )
+                                .map((video) => {
+                                    const isTextFile = video.filename
+                                        .toLowerCase()
+                                        .endsWith(".txt");
+                                    const isH264 = video.filename
+                                        .toLowerCase()
+                                        .endsWith(".h264");
+
+                                    if (isTextFile) {
+                                        return `
+                                            <div class="video-item">
+                                                <div class="text-file-preview"
+                                                     onclick="window.open('/videos/${video.filename}', '_blank')">
+                                                    <div class="file-icon">📄</div>
+                                                    <div class="file-type">DEBUG LOG</div>
+                                                </div>
+                                                <div class="video-info">
+                                                    ${video.filename}<br>
+                                                    ${new Date(video.created).toLocaleString()}<br>
+                                                    <button class="download-btn" onclick="downloadVideo('${video.filename}')">
+                                                        Download
+                                                    </button>
+                                                    <button class="delete-btn" onclick="deleteVideo('${video.filename}')">
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            `;
+                                    } else {
+                                        return `
+                                            <div class="video-item">
+                                                <video src="/videos/${video.filename}"
+                                                       class="video-thumbnail"
+                                                       controls
+                                                       onclick="window.open('/videos/${video.filename}', '_blank')">
+                                                </video>
+                                                <div class="video-info">
+                                                    ${video.filename}<br>
+                                                    ${new Date(video.created).toLocaleString()}<br>
+                                                    ${isH264 ? "<small>(H264 format)</small><br>" : ""}
+                                                    <button class="download-btn" onclick="downloadVideo('${video.filename}')">
+                                                        Download
+                                                    </button>
+                                                    <button class="delete-btn" onclick="deleteVideo('${video.filename}')">
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            `;
+                                    }
+                                })
                                 .join("");
                         } else {
                             videoList.innerHTML =
