@@ -87,6 +87,13 @@ flask run
 - **Videos don't play**: H264 files may need conversion. Ensure FFmpeg is installed
 - **"Error parsing filterchain"**: FFmpeg text filter issue - will fallback to OpenCV or simple video
 
+### Color Issues
+- **Wrong colors in live preview/pictures**: Fixed by using native RGB format throughout
+- **Videos have correct colors but pictures don't**: Now using Picamera2's direct `capture_file()` method
+- **Color format consistency**: Live stream, pictures, and videos all use same RGB pipeline
+- **Optimal performance**: Pictures use dedicated `still` stream for highest quality RGB capture
+- **No color conversions**: Direct RGB handling eliminates BGR conversion artifacts
+
 ### Debug Mode
 - Set `debug_mode: true` in `config.yml` to test without real camera
 - **Multiple fallback methods**:

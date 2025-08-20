@@ -60,7 +60,8 @@ if not DEBUG_MODE:
     # Initialize Picamera2
     picam2 = Picamera2()
     config = picam2.create_video_configuration(
-        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+        still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
     )
     picam2.configure(config)
     picam2.start()
@@ -87,10 +88,10 @@ def gen_frames():
             img.save(img_buffer, format='JPEG', quality=85)
             frame_bytes = img_buffer.getvalue()
         else:
-            # Capture frame from camera
+            # Capture frame from camera using main stream (RGB format)
             frame = picam2.capture_array('main')
-            # Use PIL for JPEG encoding to preserve BGR color format
-            img = Image.fromarray(frame, 'BGR')
+            # Use PIL for JPEG encoding to preserve RGB color format
+            img = Image.fromarray(frame, 'RGB')
             img_buffer = io.BytesIO()
             img.save(img_buffer, format='JPEG', quality=85)
             frame_bytes = img_buffer.getvalue()
@@ -120,7 +121,8 @@ def set_resolution():
             # Reconfigure the camera with new settings
             picam2.stop()
             config = picam2.create_video_configuration(
-                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+                still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
             )
             # Configure HDR if needed
             #if camera_settings['hdr']:
@@ -161,11 +163,8 @@ def take_picture():
             img.save(filepath, format='JPEG', quality=95)
             success = True
         else:
-            # Capture a high-quality still image from camera
-            frame = picam2.capture_array('main')
-            # Use PIL to save image directly from BGR format
-            img = Image.fromarray(frame, 'BGR')
-            img.save(filepath, format='JPEG', quality=95)
+            # Use Picamera2's direct image capture for optimal RGB handling
+            picam2.capture_file(filepath, name='still')
             success = True
 
         if success:
@@ -469,7 +468,8 @@ def record_video():
 
                 # Configure for video recording
                 video_config = picam2.create_video_configuration(
-                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+                    still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                 )
                 picam2.configure(video_config)
 
@@ -519,7 +519,8 @@ def record_video():
 
                 # Restart the video stream for live feed
                 stream_config = picam2.create_video_configuration(
-                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                    main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+                    still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                 )
                 picam2.configure(stream_config)
                 picam2.start()
@@ -546,7 +547,8 @@ def record_video():
                 # Ensure we restart the stream even if recording fails
                 try:
                     stream_config = picam2.create_video_configuration(
-                        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
+                        main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])},
+                        still={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
                     )
                     picam2.configure(stream_config)
                     picam2.start()
