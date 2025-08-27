@@ -1,14 +1,15 @@
 [Unit]
-Description=Pi Cam Stream Flask App
+Description=GPIO Trigger Service
 After=network.target
+Requires=mintcam.service
+After=mintcam.service
 
 [Service]
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/mintcam
-ExecStart=/home/pi/mintcam/autostart/start.sh
+ExecStart=python3 /home/pi/mintcam/gpio_trigger.py
 Restart=always
-#Environment=FLASK_ENV=production
 
 [Install]
 WantedBy=multi-user.target
