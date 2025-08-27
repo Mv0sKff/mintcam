@@ -90,7 +90,8 @@ def gen_frames():
             # Capture frame from camera using main stream (RGB format)
             frame = picam2.capture_array('main')
             # Use PIL for JPEG encoding to preserve RGB color format
-            img = Image.fromarray(frame, 'BGR')
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame_rgb, 'RGB')
             img_buffer = io.BytesIO()
             img.save(img_buffer, format='JPEG', quality=85)
             frame_bytes = img_buffer.getvalue()
