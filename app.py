@@ -348,7 +348,7 @@ def record_video():
 
     try:
         data = request.get_json() or {}
-        duration = min(int(data.get('duration', 30)), 30)  # Max 30 seconds
+        duration = min(int(data.get('duration', 30)), 600)  # Max 10 minutes
 
         if video_recording['is_recording']:
             return jsonify({

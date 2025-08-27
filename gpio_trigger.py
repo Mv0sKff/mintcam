@@ -1,9 +1,15 @@
 import RPi.GPIO as GPIO
 import time
+import os
 
 def pin_change(channel):
     if GPIO.input(channel) == GPIO.HIGH:
         print("Pin UP")
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+        cmd_parts = f'python3 {current_dir}/callback.py video 60'
+
+        os.system(cmd_parts)
     else:
         print("Pin DOWN")
 
