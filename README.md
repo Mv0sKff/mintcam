@@ -51,4 +51,12 @@ sudo systemctl enable gpio_trigger
 sudo nmcli device wifi hotspot ssid "mintcam" password <password>
 ```
 
-then open in browser: ![http://10.42.0.1:5000](http://10.42.0.1:5000)
+### Forward traffic from port 5000 to port 80
+
+```
+sudo apt install iptables iptables-persistent
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 5000
+sudo netfilter-persistent save
+```
+
+then open in browser: ![http://10.42.0.1](http://10.42.0.1) (default raspberry pi ip address)
