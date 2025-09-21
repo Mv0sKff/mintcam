@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=root # for port 80
+User=pi
 WorkingDirectory=/home/pi/mintcam
 ExecStart=/home/pi/mintcam/autostart/start.sh
 Restart=always

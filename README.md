@@ -41,6 +41,8 @@ sudo cp autostart/gpio_trigger.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl start mintcam
 sudo systemctl enable mintcam
+sudo systemctl start gpio_trigger
+sudo systemctl enable gpio_trigger
 ```
 
 ## Create wifi hotspot

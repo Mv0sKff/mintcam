@@ -7,4 +7,4 @@ source .venv/bin/activate
 
 ./autostart/wifi.sh
 
-python app.py
+sudo python app.py
