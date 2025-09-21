@@ -59,10 +59,10 @@ resolution_presets = {
 if not DEBUG_MODE:
     # Initialize Picamera2
     picam2 = Picamera2()
-    config = picam2.create_video_configuration(
+    picam_config = picam2.create_video_configuration(
         main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
     )
-    picam2.configure(config)
+    picam2.configure(picam_config)
     picam2.start()
 
 # Generator for MJPEG stream
@@ -117,7 +117,7 @@ def set_resolution():
         if not DEBUG_MODE:
             # Reconfigure the camera with new settings
             picam2.stop()
-            config = picam2.create_video_configuration(
+            picam_config = picam2.create_video_configuration(
                 main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
             )
             # Configure HDR if needed
@@ -129,7 +129,7 @@ def set_resolution():
             # Set framerate
             picam2.set_controls({"FrameRate": camera_settings['fps']})
 
-            picam2.configure(config)
+            picam2.configure(picam_config)
             picam2.start()
 
     return jsonify({'success': True, 'settings': camera_settings})
@@ -174,10 +174,10 @@ def take_picture():
 
             # Switch back to video configuration for live stream
             picam2.stop()
-            config = picam2.create_video_configuration(
+            picam_config = picam2.create_video_configuration(
                 main={'format': 'RGB888', 'size': (camera_settings['width'], camera_settings['height'])}
             )
-            picam2.configure(config)
+            picam2.configure(picam_config)
             picam2.start()
 
             success = True
