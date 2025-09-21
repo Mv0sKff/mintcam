@@ -50,3 +50,5 @@ sudo systemctl enable gpio_trigger
 ```
 sudo nmcli device wifi hotspot ssid "mintcam" password <password>
 ```
+
+then open in browser: ![http://10.42.0.1:5000](http://10.42.0.1:5000)
