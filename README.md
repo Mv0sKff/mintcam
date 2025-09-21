@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 ## Run
 ```
-flask run --host=0.0.0.0
+flask run --host=0.0.0.0 --port=5000
 ```
 
 ## Configuration
