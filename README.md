@@ -42,3 +42,9 @@ sudo systemctl daemon-reload
 sudo systemctl start mintcam
 sudo systemctl enable mintcam
 ```
+
+## Create wifi hotspot
+
+```
+sudo nmcli device wifi hotspot ssid "mintcam" password <password>
+```
