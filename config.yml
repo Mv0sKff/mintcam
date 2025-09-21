@@ -1,5 +1,6 @@
 name: Aquarium
 debug_mode: true
-systemd_service: false
-cron_update: false
 port: 5000
+wifi: false
+wifi_ssid: "mintcam"
+wifi_password: "changethedefaultpassword"

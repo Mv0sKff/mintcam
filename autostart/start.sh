@@ -5,4 +5,6 @@ source .venv/bin/activate
 
 ./autostart/update.sh
 
+./autostart/wifi.sh
+
 python app.py
