@@ -6,6 +6,7 @@ wifi=$(grep "^wifi:" "$CONFIG_FILE" | awk '{print $2}')
 ssid=$(grep "^wifi_ssid:" "$CONFIG_FILE" | sed 's/wifi_ssid:[ ]*//; s/"//g')
 password=$(grep "^wifi_password:" "$CONFIG_FILE" | sed 's/wifi_password:[ ]*//; s/"//g')
 
+# debug
 echo "wifi=$wifi"
 echo "ssid=$ssid"
 echo "password=$password"
