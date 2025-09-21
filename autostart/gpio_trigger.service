@@ -1,8 +1,8 @@
 [Unit]
 Description=GPIO Trigger Service
 After=network.target
-Requires=mintcam.service
-After=mintcam.service
+#Requires=mintcam.service
+#After=mintcam.service
 
 [Service]
 Type=simple
