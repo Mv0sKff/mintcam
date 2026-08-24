@@ -19,7 +19,7 @@ import sys
 
 # Camera / print head distance from the print bed during the scan (mm).
 # Adjust to the physical mounting height of your camera.
-CAMERA_HEIGHT_MM = 70.0
+CAMERA_HEIGHT_MM = 120.0
 
 
 def build_parser():
