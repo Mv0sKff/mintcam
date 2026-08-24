@@ -4,3 +4,6 @@ port: 5000
 wifi: false
 wifi_ssid: "mintcam"
 wifi_password: "changethedefaultpassword"
+scanning_cam: true
+scanner_port: 5000
+camera_height_mm: 70

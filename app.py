@@ -22,6 +22,14 @@ def load_config():
 
 config = load_config()
 
+# If scanning microscope mode is enabled, this app should not run.
+# Start the scanner app instead: flask --app scanner.webapp run --host=0.0.0.0 --port=<port>
+if config.get('scanning_cam', False):
+    raise SystemExit(
+        "scanning_cam is enabled in config.yml — run the scanner app instead: "
+        "flask --app scanner.webapp run --host=0.0.0.0 --port=" + str(config.get('scanner_port', 5000))
+    )
+
 # Set DEBUG_MODE to True for testing without Picamera2
 DEBUG_MODE = bool(config.get("debug_mode", True))
 # Generate more useful demo images for demo

@@ -1,0 +1,145 @@
+<html>
+    <head>
+        <title>scanning microscope</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='css/style.css') }}"
+        />
+    </head>
+    <body>
+        <div class="container">
+            <h1>scanning microscope | {{ config.get("name", "") }}</h1>
+
+            <div class="stream-container">
+                <img src="{{ url_for('live_video_feed') }}" alt="live feed" />
+            </div>
+
+            <div class="controls">
+                <button id="start-recording-btn" type="button">
+                    Start Recording
+                </button>
+                <button id="stop-recording-btn" type="button" disabled>
+                    Stop Recording
+                </button>
+                <div id="record-status" class="status-message"></div>
+            </div>
+
+            <div class="controls">
+                <button id="stitch-btn" type="button" disabled>Stitch</button>
+                <span id="last-video"></span>
+                <div id="stitch-status" class="status-message"></div>
+            </div>
+
+            <div class="scan-container">
+                <h3>Latest Scan</h3>
+                <div id="latest-scan">
+                    <p>No scan available yet.</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const startBtn = document.getElementById("start-recording-btn");
+            const stopBtn = document.getElementById("stop-recording-btn");
+            const stitchBtn = document.getElementById("stitch-btn");
+            const recordStatus = document.getElementById("record-status");
+            const stitchStatus = document.getElementById("stitch-status");
+            const lastVideo = document.getElementById("last-video");
+            let recordedFilename = null;
+            let stitchPoll = null;
+
+            startBtn.addEventListener("click", async function () {
+                startBtn.disabled = true;
+                recordStatus.textContent = "Starting recording...";
+                try {
+                    const res = await fetch("/start_recording", { method: "POST" });
+                    const data = await res.json();
+                    if (data.success) {
+                        recordStatus.textContent = "Recording: " + data.filename;
+                        stopBtn.disabled = false;
+                    } else {
+                        recordStatus.textContent = data.message;
+                        startBtn.disabled = false;
+                    }
+                } catch (e) {
+                    recordStatus.textContent = "Error: " + e;
+                    startBtn.disabled = false;
+                }
+            });
+
+            stopBtn.addEventListener("click", async function () {
+                stopBtn.disabled = true;
+                recordStatus.textContent = "Stopping recording...";
+                try {
+                    const res = await fetch("/stop_recording", { method: "POST" });
+                    const data = await res.json();
+                    if (data.success) {
+                        recordStatus.textContent = "Saved: " + data.filename;
+                        recordedFilename = data.filename;
+                        lastVideo.textContent = recordedFilename;
+                        stitchBtn.disabled = false;
+                    } else {
+                        recordStatus.textContent = data.message;
+                    }
+                } catch (e) {
+                    recordStatus.textContent = "Error: " + e;
+                }
+                startBtn.disabled = false;
+            });
+
+            stitchBtn.addEventListener("click", async function () {
+                if (!recordedFilename) return;
+                stitchBtn.disabled = true;
+                stitchStatus.textContent = "Starting stitch...";
+                try {
+                    const res = await fetch("/stitch", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ filename: recordedFilename }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        stitchStatus.textContent = "Stitching...";
+                        stitchPoll = setInterval(pollStitchStatus, 2000);
+                    } else {
+                        stitchStatus.textContent = data.message;
+                        stitchBtn.disabled = false;
+                    }
+                } catch (e) {
+                    stitchStatus.textContent = "Error: " + e;
+                    stitchBtn.disabled = false;
+                }
+            });
+
+            async function pollStitchStatus() {
+                try {
+                    const res = await fetch("/stitch_status");
+                    const data = await res.json();
+                    const job = data.job || {};
+                    if (job.status === "running") {
+                        stitchStatus.textContent = "Stitching...";
+                    } else if (job.status === "done") {
+                        clearInterval(stitchPoll);
+                        stitchStatus.textContent = "Done: " + job.output;
+                        refreshLatestScan();
+                        stitchBtn.disabled = false;
+                    } else if (job.status === "failed") {
+                        clearInterval(stitchPoll);
+                        stitchStatus.textContent = "Failed: " + (job.error || "unknown error");
+                        stitchBtn.disabled = false;
+                    }
+                } catch (e) {
+                    // keep polling
+                }
+            }
+
+            function refreshLatestScan() {
+                const div = document.getElementById("latest-scan");
+                div.innerHTML =
+                    '<img src="/latest_scan?ts=' + Date.now() + '" alt="latest scan" />';
+            }
+
+            refreshLatestScan();
+        </script>
+    </body>
+</html>
