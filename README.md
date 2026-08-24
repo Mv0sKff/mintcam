@@ -56,6 +56,7 @@ sudo nmcli device wifi hotspot ssid "mintcam" password <password>
 ```
 sudo apt install iptables iptables-persistent
 sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 5000
+sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 5000
 sudo netfilter-persistent save
 ```
 
